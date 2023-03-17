@@ -1,4 +1,4 @@
-import s3Client from "../ionos/client-ionos.js";
+import s3Client from "../config/s3-client.js";
 import { PutObjectCommand } from "@aws-sdk/client-s3";
 import fs from 'fs';
 
@@ -10,6 +10,7 @@ export default async (Key,filePath) => {
     Bucket : "athlyzertv",
     Key : Key,
     Body : fileContent,
+    ACL : "public-read"
   });
 
   try {

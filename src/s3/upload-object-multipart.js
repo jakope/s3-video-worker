@@ -2,7 +2,7 @@
  * Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
  * SPDX-License-Identifier: Apache-2.0
  */
-import s3Client from ".../config/s3-client.js";
+import s3Client from "../config/s3-client.js";
 import {readChunkSync} from 'read-chunk';
 import {
   CreateMultipartUploadCommand,
@@ -26,6 +26,7 @@ export default async (bucket,key,size) => {
       new CreateMultipartUploadCommand({
         Bucket: bucketName,
         Key: multiUploadKey,
+        ACL : "public-read"
       })
     );
 

@@ -10,6 +10,7 @@ export default async (Bucket,Key) => {
     Bucket : "athlyzertv",
     Key : Bucket + "/" + Key,
     Body : fileContent,
+    ACL : "public-read"
   });
 
   try {

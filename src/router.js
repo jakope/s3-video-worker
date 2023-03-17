@@ -3,10 +3,8 @@ import Joi from 'joi';
 import ExpressJoiValidator from 'express-joi-validation';
 const validator = ExpressJoiValidator.createValidator({})
 const router = express.Router();
-const transcodeValidation = Joi.object({
-    bucket: Joi.string().required(),
-    key: Joi.string().required(),
-});
+import {queue, errors, dones } from './config/database.js';
+import listObjects from './s3/list-objects.js';
 import Transcoder from './video/index.js';
 import headObject from './s3/head-object.js';
 
@@ -14,7 +12,13 @@ router.get("/",(req,res)=>{
     return res.send("Up and running");
 });
 
-router.get("/video/transcode",validator.query(transcodeValidation),async (req,res)=>{
+//router.use(validator.query(tokenValidator));
+
+router.get("/video/transcode",validator.query(Joi.object({
+    access_token : Joi.string().required(),
+    bucket: Joi.string().required(),
+    key: Joi.string().required(),
+})),async (req,res)=>{
     console.log("transcode video");
     const Bucket = req.query.bucket;
     const Key = req.query.key;
@@ -27,6 +31,23 @@ router.get("/video/transcode",validator.query(transcodeValidation),async (req,re
     }else{
         return res.status(404);
     }
+});
+
+router.get("/list",validator.query(Joi.object({
+    access_token : Joi.string().required(),
+    bucket: Joi.string().required(),
+})),async (req,res)=>{
+    return res.json(await listObjects(req.query.bucket));
+});
+
+router.get("/queue",async (req,res)=>{
+    return res.json(await queue.getData("/"));
+});
+router.get("/dones",async (req,res)=>{
+    return res.json(await dones.getData("/"));
+});
+router.get("/errors",async (req,res)=>{
+    return res.json(await errors.getData("/"));
 });
 
 export default router;

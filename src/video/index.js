@@ -14,7 +14,7 @@ export const upload = function(bucket, key,folder){
     return new Promise((resolve)=>{
 
     
-    const worker = new Worker("./upload-folder.js", {workerData: {bucket,key, folder}});
+    const worker = new Worker(dirname + "src/video/upload-folder.js", {workerData: {bucket,key, folder}});
       worker.on("message", msg => console.log("message",msg));
       worker.on("error", err => console.error("error",err));
       worker.on("exit", code => {
@@ -67,11 +67,11 @@ export const transcode = function(bucket, key, folder){
     }
     await new Promise((resolve)=>setTimeout(resolve, 50));
     if(transcodeAndUploadSuccess){
-      dones.push(folder,{ bucket,key, folder });
+      dones.push("/"+folder,{ bucket,key, folder });
     }else{
-      errors.push(folder,{ bucket,key, folder });
+      errors.push("/"+folder,{ bucket,key, folder });
     }
-    queue.delete(folder);
+    queue.delete("/"+folder);
     isRunning = false;
     executeNext();
     //return Promise.resolve(transcodeAndUploadSuccess);
@@ -82,19 +82,16 @@ export const transcode = function(bucket, key, folder){
       var queueData = await queue.getData("/");
       const keys = Object.keys(queueData);
       if(keys && keys[0]){
-        console.log("next");
         const firstData = queueData[keys[0]];
         doWork(firstData.bucket, firstData.key, firstData.folder);
       }
     }
-    
-    
   }
 
 const add = function (bucket, key){
   const random = ulid();
   console.log("random",random);
-  queue.push(random,{ bucket,key, folder : random });
+  queue.push("/"+random,{ bucket,key, folder : random });
   executeNext();
 }
 

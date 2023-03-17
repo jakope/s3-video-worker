@@ -8,8 +8,11 @@
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "nodemonConfig": {
-    "ignore": ["output/*","database/*"]
-},
+    "ignore": [
+      "output/*",
+      "database/*"
+    ]
+  },
   "author": "Janos Koschwitz",
   "license": "ISC",
   "dependencies": {
@@ -23,6 +26,7 @@
     "joi": "^17.8.4",
     "morgan": "^1.10.0",
     "node-json-db": "^2.1.5",
+    "read-chunk": "^4.0.3",
     "ulidx": "^0.5.0",
     "winston": "^3.8.2"
   }
