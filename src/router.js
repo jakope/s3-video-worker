@@ -14,7 +14,7 @@ router.get("/",(req,res)=>{
     return res.send("Up and running");
 });
 
-router.use((req,res)=>{
+router.use((req,res,next)=>{
     if(req.query?.access_token == process.env.ACCESS_TOKEN){
         next();
     }else{
@@ -35,6 +35,26 @@ router.get("/video/transcode",validator.query(Joi.object({
     if(exists){
     console.log("exists",Bucket + Key);
       await Transcoder.add(Bucket,Key);
+      return res.status(200).send("added" + Key);
+    }else{
+        return res.status(404);
+    }
+});
+
+router.get("/video/cut",validator.query(Joi.object({
+    access_token : Joi.string().required(),
+    bucket: Joi.string().required(),
+    key: Joi.string().required(),
+    start : Joi.string().required(),
+    end : Joi.string().required(),
+})),async (req,res)=>{
+    console.log("transcode video");
+    const Bucket = req.query.bucket;
+    const Key = req.query.key;
+    const exists = await headObject(Bucket,Key);
+    if(exists){
+    console.log("exists",Bucket + Key);
+      await Transcoder.add(Bucket,Key,{ format : "mp4", start : req.query.start, end : req.query.end });
       return res.status(200).send("added" + Key);
     }else{
         return res.status(404);

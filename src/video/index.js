@@ -12,8 +12,6 @@ import { queue, dones, errors } from '../config/database.js';
 
 export const upload = function(bucket, key,folder){
     return new Promise((resolve)=>{
-
-    
     const worker = new Worker(dirname + "src/video/upload-folder.js", {workerData: {bucket,key, folder}});
       worker.on("message", msg => console.log("message",msg));
       worker.on("error", err => console.error("error",err));
@@ -41,7 +39,28 @@ export const transcode = function(bucket, key, folder){
     });
     })
   }
-   async function doWork(bucket, key, folder){
+
+  export const transcodeMp4 = function(bucket, key, folder, start, end){
+    return new Promise((resolve)=>{
+    const worker = new Worker(dirname + "src/video/transcode-mp4.js", {workerData: {bucket,key,folder, start, end }});
+    worker.on("message", msg => {
+      console.log("msg",msg);
+      if(msg){
+        resolve(true)
+      }else{
+        console.log("transcode did not work");
+        resolve(false);
+      }
+    });
+    worker.on("error", err => console.error("error",err));
+    worker.on("exit", code => {
+        
+    });
+    })
+  }
+
+
+   async function doWork(bucket, key, folder, options){
     console.log("run");
     let transcodeAndUploadSuccess = false;
     isRunning = true;
@@ -52,10 +71,15 @@ export const transcode = function(bucket, key, folder){
         
     }
     try {
-        console.log("mkdir");
         await fs.promises.mkdir(outputPath, { recursive : true});
-        console.log("after");
-        const success = await transcode(bucket,key,folder);
+        let success;
+        console.log("format",options);
+        if(options && options.format == "mp4"){
+          success = await transcodeMp4(bucket,key,folder,options.start, options.end);
+        }else{
+          success = await transcode(bucket,key,folder);
+        }
+        
         if(success){
           await upload(bucket, key, folder)
         }    
@@ -83,16 +107,17 @@ export const transcode = function(bucket, key, folder){
       const keys = Object.keys(queueData);
       if(keys && keys[0]){
         const firstData = queueData[keys[0]];
-        doWork(firstData.bucket, firstData.key, firstData.folder);
+        doWork(firstData.bucket, firstData.key, firstData.folder, firstData.options);
       }
     }
   }
 
-const add = function (bucket, key){
+const add = function (bucket, key, options){
   const random = ulid();
   console.log("random",random);
-  queue.push("/"+random,{ bucket,key, folder : random });
+  queue.push("/"+random,{ bucket,key, folder : random, options });
   executeNext();
+  return random;
 }
 
 export default {
