@@ -1,3 +1,5 @@
+import * as dotenv from 'dotenv'
+dotenv.config()
 import express from 'express';
 import Joi from 'joi';
 import ExpressJoiValidator from 'express-joi-validation';
@@ -12,7 +14,13 @@ router.get("/",(req,res)=>{
     return res.send("Up and running");
 });
 
-//router.use(validator.query(tokenValidator));
+router.use((req,res)=>{
+    if(req.query?.access_token == process.env.ACCESS_TOKEN){
+        next();
+    }else{
+        return res.status(404).send("Wrong access_token")
+    }
+});
 
 router.get("/video/transcode",validator.query(Joi.object({
     access_token : Joi.string().required(),
