@@ -80,7 +80,7 @@ const run = async () => {
             console.log(`Child exited with code ${code}`);
           }
           if (code == 0) {
-            return parentPort?.postMessage(outputFolder);
+            return parentPort?.postMessage(masterPlaylist);
           }
             ;
           return parentPort?.postMessage(false);

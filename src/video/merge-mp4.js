@@ -8,28 +8,50 @@ import pathToFfmpeg from 'ffmpeg-static';
 import path from 'path';
 import { dirname } from '../../dirname.js';
 
-const {bucket, key, folder, start, end } = workerData;
+const {bucket, keys, folder, newKey } = workerData;
 
 const s3Url = process.env.S3_URL || "https://s3-eu-central-1.ionoscloud.com";
-const url = s3Url + "/" + bucket + "/" + key;
-const outputPath = `${dirname}output/${folder}/${key}`;
+
+const outputPath = `${dirname}output/${folder}/${newKey}`;
 const outputFolder = path.dirname(outputPath) + "/" + path.parse(outputPath).name;
 const fileName = path.parse(outputPath).name;
 const outputFolderAndFilename = `${outputFolder}/${fileName}.mp4`
 fs.mkdirSync(outputFolder, { recursive: true });
 
 const buildCommands = function(){
+
+    let concatText = '';
+    let fileFormat;
+
+    for (const key of keys) {
+      let videourl = s3Url + "/" + bucket + "/" + key; 
+      fileFormat = videourl.indexOf('.webm') > -1 ? 'webm' : 'mp4';
+      concatText = concatText + "file '";
+      concatText = concatText + videourl + "'\n";
+    }
+
+    let mergeTXTpath = path
+      .join(outputFolder, 'merge.txt')
+      .replace(/\\/g, '/');
+
+    fs.writeFileSync(mergeTXTpath, concatText);
+
+    let filePath = path
+      .join(outputFolder, fileName + '.' + fileFormat)
+      .replace(/\\/g, '/');
+      
     return new Promise((resolve, reject) =>  {
-      // let commands = ['-hide_banner', '-y', '-i', url, outputPath];
-      // resolve(commands);
-      let commands = ['-hide_banner', '-y', '-i', url];
-      if(start && end){
-        commands = commands.concat(['-ss', start,'-to', end,'-avoid_negative_ts','make_zero','-copyts']);
-      }
-        const r = DefaultRenditions[3];
-        console.log("r",r);
-        commands = commands.concat(['-vf', `scale=w=${r.width}:h=${r.height}:force_original_aspect_ratio=decrease`, '-c:a', 'aac', '-ar', '48000', '-c:v', 'h264', `-profile:v`, r.profile, '-crf', '20', '-sc_threshold', '0', '-g', '48', outputFolderAndFilename])
-       resolve(commands);
+      let commands = ['-y',
+      '-f',
+      'concat',
+      '-safe',
+      '0',
+      '-i',
+      mergeTXTpath,
+      '-c',
+      'copy',
+      filePath];
+    resolve(commands);
     });
   }
 

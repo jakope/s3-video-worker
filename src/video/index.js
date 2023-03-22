@@ -20,6 +20,44 @@ export const upload = function(bucket, key,folder){
       });
     })
   }
+
+  export const mergeMp4 = function(bucket,keys,folder,newKey){
+    return new Promise((resolve)=>{
+      const worker = new Worker(dirname + "src/video/merge-mp4.js", {workerData: {bucket,keys,folder, newKey }});
+      worker.on("message", msg => {
+        console.log("msg",msg);
+        if(msg){
+          resolve(msg)
+        }else{
+          console.log("merge did not work");
+          resolve(false);
+        }
+      });
+      worker.on("error", err => console.error("error",err));
+      worker.on("exit", code => {
+          
+      });
+      })
+  }
+
+  export const cutMp4 = function(bucket, key, folder, newKey, start, end){
+    return new Promise((resolve)=>{
+    const worker = new Worker(dirname + "src/video/cut-mp4.js", {workerData: {bucket,key,folder, newKey,start, end }});
+    worker.on("message", msg => {
+      console.log("msg",msg);
+      if(msg){
+        resolve(msg)
+      }else{
+        console.log("transcode did not work");
+        resolve(false);
+      }
+    });
+    worker.on("error", err => console.error("error",err));
+    worker.on("exit", code => {
+        
+    });
+    })
+  }
   
 export const transcode = function(bucket, key, folder){
     return new Promise((resolve)=>{
@@ -27,7 +65,7 @@ export const transcode = function(bucket, key, folder){
     worker.on("message", msg => {
       console.log("msg",msg);
       if(msg){
-        resolve(true)
+        resolve(msg)
       }else{
         console.log("transcode did not work");
         resolve(false);
@@ -46,7 +84,7 @@ export const transcode = function(bucket, key, folder){
     worker.on("message", msg => {
       console.log("msg",msg);
       if(msg){
-        resolve(true)
+        resolve(msg)
       }else{
         console.log("transcode did not work");
         resolve(false);
@@ -62,7 +100,6 @@ export const transcode = function(bucket, key, folder){
 
    async function doWork(bucket, key, folder, options){
     console.log("run");
-    let transcodeAndUploadSuccess = false;
     isRunning = true;
     const outputPath = `${dirname}output/${folder}/${key}`;
     try {
@@ -74,28 +111,31 @@ export const transcode = function(bucket, key, folder){
         await fs.promises.mkdir(outputPath, { recursive : true});
         let success;
         console.log("format",options);
-        if(options && options.format == "mp4"){
+        if(options && options.method == "merge"){
+          success = await mergeMp4(bucket,key,folder,options.newKey);
+        }else if(options && options.method == "cut"){
+          console.log("CUUUUUT");
+          console.log("CUUUUUT");
+          console.log("CUUUUUT");
+          console.log("CUUUUUT");
+          success = await cutMp4(bucket,key,folder,options.newKey,options.start, options.end);
+        }else if(options && options.format == "mp4"){
           success = await transcodeMp4(bucket,key,folder,options.start, options.end);
         }else{
           success = await transcode(bucket,key,folder);
         }
-        
+        console.log("success",success);
         if(success){
           await upload(bucket, key, folder)
         }    
-        transcodeAndUploadSuccess = true;
+        dones.push("/"+folder,{ bucket,key, folder, newKey : success.split(folder)[1] });
     } catch (error) {
-        
+      errors.push("/"+folder,{ bucket,key, folder });  
     }finally{
+        queue.delete("/"+folder);
         await fs.promises.rmdir(outputPath, { recursive: true });    
     }
     await new Promise((resolve)=>setTimeout(resolve, 50));
-    if(transcodeAndUploadSuccess){
-      dones.push("/"+folder,{ bucket,key, folder });
-    }else{
-      errors.push("/"+folder,{ bucket,key, folder });
-    }
-    queue.delete("/"+folder);
     isRunning = false;
     executeNext();
     //return Promise.resolve(transcodeAndUploadSuccess);
@@ -120,6 +160,32 @@ const add = function (bucket, key, options){
   return random;
 }
 
+const progress = async function(processid){
+  const id = "/"+processid;
+  try {
+    const d = await dones.getData(id);
+    console.log("d",d);
+    return { success : true, error : false, progress : 100, key : d.bucket + d.newKey, msg : "done" };
+  } catch (error) {
+    
+  }
+  try {
+    const e = await errors.getData(id);
+    return { success : false, error : true, progress : 100};
+  } catch (error) {
+    
+  }
+  try {
+    const p = await queue.getData(id);
+    return { success : true, error : false, progress : 1, msg : "queued"};
+  } catch (error) {
+    
+  }
+  return { success : false, error : true, progress : 0};
+  
+}
+
 export default {
- add
+ add,
+ progress
 } 

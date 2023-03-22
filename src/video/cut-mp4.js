@@ -8,13 +8,13 @@ import pathToFfmpeg from 'ffmpeg-static';
 import path from 'path';
 import { dirname } from '../../dirname.js';
 
-const {bucket, key, folder, start, end } = workerData;
-
+const {bucket, key, folder, newKey, start, end } = workerData;
+console.log("newKey",newKey);
 const s3Url = process.env.S3_URL || "https://s3-eu-central-1.ionoscloud.com";
 const url = s3Url + "/" + bucket + "/" + key;
 const outputPath = `${dirname}output/${folder}/${key}`;
-const outputFolder = path.dirname(outputPath) + "/" + path.parse(outputPath).name;
-const fileName = path.parse(outputPath).name;
+const outputFolder = path.dirname(outputPath) + "/" + path.parse(key).name;
+const fileName = path.parse(newKey).name;
 const outputFolderAndFilename = `${outputFolder}/${fileName}.mp4`
 fs.mkdirSync(outputFolder, { recursive: true });
 
