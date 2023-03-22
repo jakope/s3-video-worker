@@ -42,6 +42,7 @@ const buildCommands = function(){
       
     return new Promise((resolve, reject) =>  {
       let commands = ['-y',
+      '-protocol_whitelist','file,http,https,tcp,tls',
       '-f',
       'concat',
       '-safe',

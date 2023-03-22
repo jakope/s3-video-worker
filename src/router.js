@@ -74,6 +74,9 @@ router.post("/video/cut",validator.body(Joi.object({
 
 router.post("/video/merge",validator.body(Joi.object({
     access_token : Joi.string().required(),
+    bucket : Joi.string().required(),
+    keys : Joi.array().required(),
+    newkey : Joi.string().required(),
 })),async (req,res)=>{
     console.log("merge video");
     const Bucket = req.body.bucket;
@@ -85,7 +88,7 @@ router.post("/video/merge",validator.body(Joi.object({
             return res.json({success : false, error : true, msg : "Does not exist"});
         }
     }
-    const processid = Transcoder.merge(Bucket,Keys,{ format : "mp4", method : "merge", newKey});
+    const processid = Transcoder.add(Bucket,Keys,{ format : "mp4", method : "merge", newKey});
     return res.json({  success : true, error : false, processid });
 });
 
