@@ -5,7 +5,8 @@ import pathToFfmpeg from 'ffmpeg-static';
 
 export default class CommandBuilder{
     command = [];
-    filterComplex = "";
+    filterComplex1 = "";
+    filterComplex2 = "";
     overlayInputIndex = 0;
     width;
     height;
@@ -38,8 +39,11 @@ export default class CommandBuilder{
     add(command){
         this.command = this.command.concat(command);
     }
-    addFilterComplex(filter){
-        this.filterComplex += filter;
+    addFilterComplex1(filter){
+        this.filterComplex1 += filter;
+    }
+    addFilterComplex2(filter){
+        this.filterComplex2 += filter;
     }
     addImageInput(url, duration = 1){
         this.add(['-hide_banner', '-y', '-protocol_whitelist', 'file,http,https,tcp,tls', '-f','lavfi','-i',`anullsrc=channel_layout=stereo:sample_rate=48000`,'-loop','1','-i', url,'-t',duration, '-framerate','1']);
@@ -72,11 +76,11 @@ export default class CommandBuilder{
         const width = this.width * percent / 100;
         console.log("width",this.width, percent, width);
         const height = this.height * percent / 100;
-        if(!this.filterComplex){
-            this.filterComplex = `[0:v]   scale=w=${this.width}:h=${this.height}:force_original_aspect_ratio=decrease [videoinput${this.overlayInputIndex}]`
+        if(!this.filterComplex1){
+            this.addFilterComplex1(`[0:v]   scale=w=${this.width}:h=${this.height}:force_original_aspect_ratio=decrease [videoinput${this.overlayInputIndex}]`);
         }
-        // this.addFilterComplex(`[${this.overlayInputIndex}:v] scale=${width}:${height}:force_original_aspect_ratio=decrease [ovrl${this.overlayInputIndex}];`)
-        this.addFilterComplex(`;[videoinput${this.overlayInputIndex}][${this.overlayInputIndex}:v] overlay=${positionString}[videoinput${this.overlayInputIndex+1}]`);
+        this.addFilterComplex1(`;[${this.overlayInputIndex}:v] scale=${width}:${height}:force_original_aspect_ratio=decrease [ovrl${this.overlayInputIndex}]`)
+        this.addFilterComplex2(`;[videoinput${this.overlayInputIndex}][ovrl${this.overlayInputIndex}] overlay=${positionString}[videoinput${this.overlayInputIndex+1}]`);
         return this;
     }
     cut(start,end){
@@ -97,8 +101,8 @@ export default class CommandBuilder{
         return this;
     }
     reencodeVideo(quality){
-        if(this.filterComplex){
-            this.add(['-filter_complex',`"${this.filterComplex}"`,"-map",`[videoinput${this.overlayInputIndex+1}]`])
+        if(this.filterComplex1){
+            this.add(['-filter_complex',`"${this.filterComplex1}${this.filterComplex2}"`,"-map",`[videoinput${this.overlayInputIndex+1}]`])
         }
         this.add(['-c:v', 'h264', `-profile:v`, 'main', '-crf', '20', '-sc_threshold', '0', '-g', '48']);
         return this;
