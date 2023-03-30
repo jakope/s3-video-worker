@@ -9,6 +9,12 @@ import {
 import fs from 'fs';
 import { dirname } from '../../dirname.js';
 import { queue, dones, errors } from '../config/database.js';
+import CommandBuilder from './ffmpeg-command-builder.js';
+
+
+const testcommand = CommandBuilder.a(1920,1080).addVideoInput("./output/1.mp4")
+// .addOverlay("./output/1.png")
+.addOverlay("./output/1.png","topright", 20).reencodeVideo().mp4("./output/2.mp4").logCommand().z();
 
 export const upload = function(bucket, key,folder){
     return new Promise((resolve)=>{
