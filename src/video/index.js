@@ -97,6 +97,25 @@ export const transcode = function(bucket, key, folder){
     })
   }
 
+  export const transcodeImageMp4 = function(bucket, key, folder, newKey,duration){
+    return new Promise((resolve)=>{
+    const worker = new Worker(dirname + "src/video/transcode-image-to-video.js", {workerData: {bucket,key,folder, newKey,duration}});
+    worker.on("message", msg => {
+      console.log("msg",msg);
+      if(msg){
+        resolve(msg)
+      }else{
+        console.log("transcode did not work");
+        resolve(false);
+      }
+    });
+    worker.on("error", err => console.error("error",err));
+    worker.on("exit", code => {
+        
+    });
+    })
+  }
+
 
    async function doWork(bucket, key, folder, options){
     console.log("run");
@@ -114,11 +133,9 @@ export const transcode = function(bucket, key, folder){
         if(options && options.method == "merge"){
           success = await mergeMp4(bucket,key,folder,options.newKey);
         }else if(options && options.method == "cut"){
-          console.log("CUUUUUT");
-          console.log("CUUUUUT");
-          console.log("CUUUUUT");
-          console.log("CUUUUUT");
           success = await cutMp4(bucket,key,folder,options.newKey,options.start, options.end);
+        }else if(options && options.method == "image"){
+          success = await transcodeImageMp4(bucket,key,folder,options.newKey,options.duration);
         }else if(options && options.format == "mp4"){
           success = await transcodeMp4(bucket,key,folder,options.start, options.end);
         }else{

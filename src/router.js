@@ -92,6 +92,28 @@ router.post("/video/merge",validator.body(Joi.object({
     return res.json({  success : true, error : false, processid });
 });
 
+router.post("/video/image",validator.body(Joi.object({
+    access_token : Joi.string().required(),
+    bucket: Joi.string().required(),
+    key: Joi.string().required(),
+    newkey: Joi.string().required(),
+    duration : Joi.number().required(),
+    width : Joi.number().required(),
+    height : Joi.number().required(),
+})),async (req,res)=>{
+    console.log("transcode video");
+    const Bucket = req.body.bucket;
+    const Key = req.body.key;
+    const exists = await headObject(Bucket,Key);
+    if(exists){
+        const newKey = req.body.newkey;
+      const processid = Transcoder.add(Bucket,Key,{ format : "mp4", method : "image", newKey, duration : req.body.duration,width : req.body.width,height : req.body.height });
+      return res.json({  success : true, error : false, processid });
+    }else{
+        return res.status(404);
+    }
+});
+
 
 
 router.get("/list",validator.query(Joi.object({
