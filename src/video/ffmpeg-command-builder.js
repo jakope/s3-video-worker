@@ -3,6 +3,23 @@ import { exec } from 'child_process';
 const execA = promisify(exec);
 import pathToFfmpeg from 'ffmpeg-static';
 
+export const run = async function(input){
+        let error, success;
+        try {
+            await execA(`${pathToFfmpeg} ${input}`);    
+            success = true;
+            error = false;
+        } catch (err) {
+         error = err;   
+         success = false;
+        }
+        console.log("success",success,"error",error);
+        return {
+            success,
+            error
+        }
+}
+
 export default class CommandBuilder{
     command = [];
     filterComplex1 = "";
@@ -10,7 +27,8 @@ export default class CommandBuilder{
     overlayInputIndex = 0;
     width;
     height;
-    async run (input) {
+    async run () {
+        const input = this.toString();
         let error, success;
         try {
             await execA(`${pathToFfmpeg} ${input}`);    
@@ -26,7 +44,13 @@ export default class CommandBuilder{
             error
         }
     }
-    static a(width, height){
+    // static init = function(){
+    //     videoCodec = ['-c:v', 'libx264', '-crf', '25'];
+    //     audioCodec = ['-c:a', 'aac', '-strict', '-2', '-ar', '44100', '-b:a', '64k'];
+    //     run(['-c:v', 'h264_videotoolbox']
+
+    // }
+    static create(width, height){
         console.log("this.width",width);
         return new this(width, height);
     }
@@ -46,11 +70,11 @@ export default class CommandBuilder{
         this.filterComplex2 += filter;
     }
     addImageInput(url, duration = 1){
-        this.add(['-hide_banner', '-y', '-protocol_whitelist', 'file,http,https,tcp,tls', '-f','lavfi','-i',`anullsrc=channel_layout=stereo:sample_rate=48000`,'-loop','1','-i', url,'-t',duration, '-framerate','1']);
+        this.add(['-hide_banner', '-y', '-hwaccel', 'auto', '-protocol_whitelist', 'file,http,https,tcp,tls','-loop','1','-i', url,'-f','lavfi','-i',`anullsrc=channel_layout=stereo:sample_rate=48000`,'-t',duration, '-framerate','1',]);
         return this;
     }
     addVideoInput(url){
-        this.add(['-hide_banner', '-y', '-protocol_whitelist', 'file,http,https,tcp,tls', '-i', url]);
+        this.add(['-hide_banner', '-y', '-hwaccel', 'auto', '-protocol_whitelist', 'file,http,https,tcp,tls', '-i', url]);
         return this;
     }
     addOverlay(url, position = "lefttop", percent = 10){
@@ -92,11 +116,10 @@ export default class CommandBuilder{
         return this;
     }
     pad(){
-        this.add(['-vf', `scale=w=${this.width}:h=${this.height}:force_original_aspect_ratio=1,pad=${this.width}:${this.height}:(ow-iw)/2:(oh-ih)/2 [orig];`]);
+        this.add(['-vf', `scale=w=${this.width}:h=${this.height}:force_original_aspect_ratio=1,pad=${this.width}:${this.height}:(ow-iw)/2:(oh-ih)/2`]);
         return this;
     }
     reencodeAudio(){
-        
         this.add(['-c:a', 'aac', '-ar', '48000',]);
         return this;
     }
@@ -121,7 +144,8 @@ export default class CommandBuilder{
     toString(){
         return this.command.join(" ");
     }
-    z(){
-        this.run(this.toString());
+    toArray(){
+        return this.command;
     }
+    
 }

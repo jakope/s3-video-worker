@@ -51,24 +51,28 @@ router.get("/video/progress",validator.query(Joi.object({
     return res.json(progress);
 });
 
-router.post("/video/cut",validator.body(Joi.object({
+router.post("/video/mp4",validator.body(Joi.object({
     access_token : Joi.string().required(),
     bucket: Joi.string().required(),
     key: Joi.string().required(),
     newkey: Joi.string().required(),
-    start : Joi.string().required(),
-    end : Joi.string().required(),
+    start : Joi.string().optional(),
+    end : Joi.string().optional(),
 })),async (req,res)=>{
     console.log("transcode video");
     const Bucket = req.body.bucket;
     const Key = req.body.key;
+    console.log("head");
     const exists = await headObject(Bucket,Key);
+    console.log("after head",exists);
     if(exists){
         const newKey = req.body.newkey;
-      const processid = Transcoder.add(Bucket,Key,{ format : "mp4", method : "cut", newKey, start : req.body.start, end : req.body.end });
-      return res.json({  success : true, error : false, processid });
+        console.log("exists");
+        const processid = Transcoder.add(Bucket,Key,{ method : "mp4", newKey, start : req.body.start, end : req.body.end });
+        console.log("added")
+        return res.json({  success : true, error : false, processid });
     }else{
-        return res.status(404);
+        return res.status(404).json();
     }
 });
 
