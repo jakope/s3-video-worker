@@ -58,22 +58,25 @@ router.post("/video/mp4",validator.body(Joi.object({
     newkey: Joi.string().required(),
     start : Joi.string().optional(),
     end : Joi.string().optional(),
+    overlays : Joi.array().optional()
 })),async (req,res)=>{
     console.log("transcode video");
     const Bucket = req.body.bucket;
     const Key = req.body.key;
     console.log("head");
-    const exists = await headObject(Bucket,Key);
-    console.log("after head",exists);
-    if(exists){
-        const newKey = req.body.newkey;
-        console.log("exists");
-        const processid = Transcoder.add(Bucket,Key,{ method : "mp4", newKey, start : req.body.start, end : req.body.end });
-        console.log("added")
-        return res.json({  success : true, error : false, processid });
-    }else{
+    if(!(await headObject(Bucket,Key))){
         return res.status(404).json();
     }
+        console.log("exists");
+        for (const overlay of req.body.overlays) {
+            if(!(await headObject(Bucket,overlay.key))){
+                return res.status(404).json();
+            }
+        }
+        const newKey = req.body.newkey;
+        const processid = Transcoder.add(Bucket,Key,{ method : "mp4", newKey, start : req.body.start, end : req.body.end, overlays : req.body.overlays });
+        return res.json({  success : true, error : false, processid });
+    
 });
 
 router.post("/video/stats",validator.body(Joi.object({

@@ -72,16 +72,20 @@ export const upload = function(bucket, key,folder){
           ffmpegCommand = CommandBuilder.create(1920,1080).addImageInput(inputUrl,options.duration).pad().mp4(outputKey);
         }
         else if(options.method == "mp4"){
-          ffmpegCommand = CommandBuilder.create(1920,1080).addVideoInput(inputUrl).pad()
+          ffmpegCommand = CommandBuilder.create(1920,1080).addVideoInput(inputUrl)
           if(options.start && options.end){
             ffmpegCommand = ffmpegCommand.cut(options.start, options.end);
           }
           if(options.overlays){
+            console.log("overlays",options.overlays);
             for (const overlay of options.overlays) {
-              ffmpegCommand = ffmpegCommand.addOverlay(overlay.url, overlay.position, overlay.sizeInPercent);  
+              const overlayUrl = s3Url + "/" + bucket + "/" + overlay.key;
+              ffmpegCommand = ffmpegCommand.addOverlay(overlayUrl, overlay.position, overlay.size);  
             }
+          }else{
+            ffmpegCommand = ffmpegCommand.pad()  
           }
-          ffmpegCommand = ffmpegCommand.mp4(outputKey);
+          ffmpegCommand = ffmpegCommand.reencodeVideo().mp4(outputKey);
         }else if(options && options.method == "merge"){
           let keys = options.keys.map((k)=>{
             return s3Url + "/" + bucket + "/" + k; 
@@ -92,7 +96,8 @@ export const upload = function(bucket, key,folder){
             return mergePath;
           }).mp4(outputKey);
         }
-        await ffmpegWoker(ffmpegCommand?.toArray())
+        await ffmpegCommand.run();
+        //await ffmpegWoker(ffmpegCommand?.toArray())
         if(success){
           await upload(bucket, key, folder)
         }    

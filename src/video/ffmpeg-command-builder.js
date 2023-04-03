@@ -19,19 +19,25 @@ export default class CommandBuilder{
         this.addVideoInput().add(["-f",""]);
         return this;
     }
-    extractStats(stderr){
-        console.log("stderr",stderr)
-        console.log("indexOf",stderr.indexOf("Duration:"));
+    extractDuration(str){
         const regex = /Duration: (\d{2}):(\d{2}):(\d{2}\.\d{2})/;
-    const match = regex.exec(stderr);
-    console.log("math",match);
+        const match = regex.exec(str);
     if (match !== null) {
       const duration = match[0];
       console.log(duration);
-      return duration;
+      return duration.substring(10);
     }
-    return 0;
-
+    return;
+    }
+    extractTime(str){
+        const regex = /time=(\d{2}):(\d{2}):(\d{2}\.\d{2})/;
+    const match = regex.exec(str);
+    if (match !== null) {
+      const duration = match[0];
+      console.log(str);
+      return duration.substring(5);
+    }
+    return;
     }
     add(command){
         this.command = this.command.concat(command);
@@ -81,7 +87,7 @@ export default class CommandBuilder{
             this.addFilterComplex1(`[0:v]   scale=w=${this.width}:h=${this.height}:force_original_aspect_ratio=decrease [videoinput${this.overlayInputIndex}]`);
         }
         this.addFilterComplex1(`;[${this.overlayInputIndex}:v] scale=${width}:${height}:force_original_aspect_ratio=decrease [ovrl${this.overlayInputIndex}]`)
-        this.addFilterComplex2(`;[videoinput${this.overlayInputIndex}][ovrl${this.overlayInputIndex}] overlay=${positionString}[videoinput${this.overlayInputIndex+1}]`);
+        this.addFilterComplex2(`;[videoinput${this.overlayInputIndex}][ovrl${this.overlayInputIndex}] overlay=${positionString} [videoinput${this.overlayInputIndex+1}]`);
         return this;
     }
     cut(start,end){
@@ -102,9 +108,14 @@ export default class CommandBuilder{
     }
     reencodeVideo(quality){
         if(this.filterComplex1){
-            this.add(['-filter_complex',`"${this.filterComplex1}${this.filterComplex2}"`,"-map",`[videoinput${this.overlayInputIndex+1}]`])
+            this.add(['-filter_complex',`${this.filterComplex1}${this.filterComplex2}`,`-map`,`[videoinput${this.overlayInputIndex+1}]`])
         }
-        this.add(['-c:v', 'h264', `-profile:v`, 'main', '-crf', '20', '-sc_threshold', '0', '-g', '48']);
+        if(videocodex){
+
+        }else{
+            this.add(['-c:v', 'h264', `-profile:v`, 'main', '-crf', '20', '-sc_threshold', '0', '-g', '48']);
+        }
+        
         return this;
     }
     mp4(filepath){
@@ -125,7 +136,7 @@ export default class CommandBuilder{
         return this.command;
     }
     checkMerge(){
-
+        // todo
     }
     merge(inputs, callbackToWriteConcatFile){
         let concatText = "";
@@ -136,5 +147,31 @@ export default class CommandBuilder{
         this.addOverwriteAndWhitelist().add(['-f','concat','-safe','0','-i',mergeTxtPath,'-c','copy',]);
       return this;
     }
+
+    calculateProgress(currentTime, duration) {
+        console.log(currentTime,duration);
+        const currentSeconds = this.parseTimeToSeconds(currentTime);
+        const durationSeconds = this.parseTimeToSeconds(duration);
+        const progress = currentSeconds / durationSeconds;
+        const estimatedTimeRemaining = (durationSeconds - currentSeconds) * (1 / progress);
+        const progressPercentage = progress * 100;
+        
+        return {
+          progress: progressPercentage.toFixed(2),
+          estimatedTimeRemaining: this.formatSecondsAsTime(estimatedTimeRemaining)
+        };
+      }
+      
+      parseTimeToSeconds(timeString) {
+        const [hours, minutes, seconds] = timeString.split(':').map(parseFloat);
+        return (hours * 60 * 60) + (minutes * 60) + seconds;
+      }
+      
+      formatSecondsAsTime(totalSeconds) {
+        const hours = Math.floor(totalSeconds / 3600);
+        const minutes = Math.floor((totalSeconds % 3600) / 60);
+        const seconds = Math.floor(totalSeconds % 60);
+        return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+      }
     
 }
