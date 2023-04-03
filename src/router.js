@@ -76,6 +76,22 @@ router.post("/video/mp4",validator.body(Joi.object({
     }
 });
 
+router.post("/video/stats",validator.body(Joi.object({
+    access_token : Joi.string().required(),
+    bucket: Joi.string().required(),
+    key: Joi.string().required(),
+})),async (req,res)=>{
+    const Bucket = req.body.bucket;
+    const Key = req.body.key;
+    const exists = await headObject(Bucket,Key);
+    if(exists){
+        const stats = Transcoder.stats(Bucket, Key);
+        return res.json({  success : true, error : false, stats });
+    }else{
+        return res.status(404).json();
+    }
+});
+
 router.post("/video/merge",validator.body(Joi.object({
     access_token : Joi.string().required(),
     bucket : Joi.string().required(),
@@ -89,10 +105,10 @@ router.post("/video/merge",validator.body(Joi.object({
     for (const Key of Keys) {
         const exists = await headObject(Bucket,Key);
         if(!exists){
-            return res.json({success : false, error : true, msg : "Does not exist"});
+            return res.json({success : false, error : true, msg : Key + " - Does not exist"});
         }
     }
-    const processid = Transcoder.add(Bucket,Keys,{ format : "mp4", method : "merge", newKey});
+    const processid = Transcoder.add(Bucket,Keys,{ format : "mp4", method : "merge", newKey, keys : Keys,});
     return res.json({  success : true, error : false, processid });
 });
 

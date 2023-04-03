@@ -1,25 +1,3 @@
-import {promisify} from 'util';
-import { exec } from 'child_process';
-const execA = promisify(exec);
-import pathToFfmpeg from 'ffmpeg-static';
-
-export const run = async function(input){
-        let error, success;
-        try {
-            await execA(`${pathToFfmpeg} ${input}`);    
-            success = true;
-            error = false;
-        } catch (err) {
-         error = err;   
-         success = false;
-        }
-        console.log("success",success,"error",error);
-        return {
-            success,
-            error
-        }
-}
-
 export default class CommandBuilder{
     command = [];
     filterComplex1 = "";
@@ -27,30 +5,7 @@ export default class CommandBuilder{
     overlayInputIndex = 0;
     width;
     height;
-    async run () {
-        const input = this.toString();
-        let error, success;
-        try {
-            await execA(`${pathToFfmpeg} ${input}`);    
-            success = true;
-            error = false;
-        } catch (err) {
-         error = err;   
-         success = false;
-        }
-        console.log("success",success,"error",error);
-        return {
-            success,
-            error
-        }
-    }
-    // static init = function(){
-    //     videoCodec = ['-c:v', 'libx264', '-crf', '25'];
-    //     audioCodec = ['-c:a', 'aac', '-strict', '-2', '-ar', '44100', '-b:a', '64k'];
-    //     run(['-c:v', 'h264_videotoolbox']
-
-    // }
-    static create(width, height){
+    static create(width, height, hwaccel){
         console.log("this.width",width);
         return new this(width, height);
     }
@@ -59,6 +14,24 @@ export default class CommandBuilder{
         this.height = height;
         this.width = width;
         console.log("this.width",this.width);
+    }
+    stats(){
+        this.addVideoInput().add(["-f",""]);
+        return this;
+    }
+    extractStats(stderr){
+        console.log("stderr",stderr)
+        console.log("indexOf",stderr.indexOf("Duration:"));
+        const regex = /Duration: (\d{2}):(\d{2}):(\d{2}\.\d{2})/;
+    const match = regex.exec(stderr);
+    console.log("math",match);
+    if (match !== null) {
+      const duration = match[0];
+      console.log(duration);
+      return duration;
+    }
+    return 0;
+
     }
     add(command){
         this.command = this.command.concat(command);
@@ -69,12 +42,16 @@ export default class CommandBuilder{
     addFilterComplex2(filter){
         this.filterComplex2 += filter;
     }
+    addOverwriteAndWhitelist(){
+        this.add(['-hide_banner', '-y', '-hwaccel', 'auto', '-protocol_whitelist', 'file,http,https,tcp,tls']);
+        return this;
+    }
     addImageInput(url, duration = 1){
-        this.add(['-hide_banner', '-y', '-hwaccel', 'auto', '-protocol_whitelist', 'file,http,https,tcp,tls','-loop','1','-i', url,'-f','lavfi','-i',`anullsrc=channel_layout=stereo:sample_rate=48000`,'-t',duration, '-framerate','1',]);
+        this.addOverwriteAndWhitelist().add(['-loop','1','-i', url,'-f','lavfi','-i',`anullsrc=channel_layout=stereo:sample_rate=48000`,'-t',duration, '-framerate','1',]);
         return this;
     }
     addVideoInput(url){
-        this.add(['-hide_banner', '-y', '-hwaccel', 'auto', '-protocol_whitelist', 'file,http,https,tcp,tls', '-i', url]);
+        this.addOverwriteAndWhitelist().add([ '-i', url]);
         return this;
     }
     addOverlay(url, position = "lefttop", percent = 10){
@@ -146,6 +123,18 @@ export default class CommandBuilder{
     }
     toArray(){
         return this.command;
+    }
+    checkMerge(){
+
+    }
+    merge(inputs, callbackToWriteConcatFile){
+        let concatText = "";
+        for (const input of inputs) {
+            concatText += "file '" + input + "'\n";    
+        }        
+        const mergeTxtPath = callbackToWriteConcatFile(concatText);
+        this.addOverwriteAndWhitelist().add(['-f','concat','-safe','0','-i',mergeTxtPath,'-c','copy',]);
+      return this;
     }
     
 }

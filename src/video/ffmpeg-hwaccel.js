@@ -56,7 +56,7 @@ const responses = await Promise.all(hardwareAccelerationMethods.map(async (hardw
     performanceResults[hardwareMethod] = { elapsedTime, hardwareUsed };
     console.log(`${hardwareMethod}: ${elapsedTime}ms, hardware used: ${hardwareUsed}`);
   }
-  return response;
+  return {...response, hardwareMethod : `${videoCodec}_${hardwareMethod}` };
 }));
-return responses;
+return responses.filter((response)=>response.success).map(response => response.hardwareMethod);
 }

@@ -9,12 +9,14 @@ import {
 import fs from 'fs';
 import { dirname } from '../../dirname.js';
 import { queue, dones, errors } from '../config/database.js';
-import CommandBuilder from './ffmpeg-command-builder.js';
+import CommandBuilder from './ffmpeg-command-builder-node.js';
 const s3Url = process.env.S3_URL || "https://s3-eu-central-1.ionoscloud.com";
 import path from 'path';
 
-import {testHardwareAcceleration } from './ffmpeg-hwaccel-tester.js';
-testHardwareAcceleration(`${dirname}output`);
+import {testHardwareAcceleration } from './ffmpeg-hwaccel.js';
+// testHardwareAcceleration(`${dirname}output`).then((a)=>{
+// console.log("a",a);
+// })
 //const testcommand = CommandBuilder.a(1920,1080).addVideoInput("./output/1.mp4").addOverlay("./output/1.png").addOverlay("./output/1.png","topright", 20).reencodeVideo().mp4("./output/2.mp4").logCommand().z();
 
 export const upload = function(bucket, key,folder){
@@ -58,20 +60,18 @@ export const upload = function(bucket, key,folder){
     try {
        let success;
 
-       let ffmpegCommand, outputFolder, outputKey;
+       let ffmpegCommand;
+       const outputFolder = `${dirname}output/${folder}`;
+       const fileName = `${options.newKey}`;
+       const outputKey = `${outputFolder}/${fileName}.mp4`
+       fs.mkdirSync(path.dirname(outputKey), { recursive: true });
+       const inputUrl = s3Url + "/" + bucket + "/" + key;
         console.log("format",options);
+
         if(options.method =="image"){
-          const inputUrl = s3Url + "/" + bucket + "/" + key;
-          outputFolder = `${dirname}output/${folder}`;
-          const fileName = `${options.newKey}`;
-          outputKey = `${outputFolder}/${fileName}.mp4`
           ffmpegCommand = CommandBuilder.create(1920,1080).addImageInput(inputUrl,options.duration).pad().mp4(outputKey);
         }
-        if(options.method == "mp4"){
-          const inputUrl = s3Url + "/" + bucket + "/" + key;
-          outputFolder = `${dirname}output/${folder}`;
-          const fileName = `${options.newKey}`;
-          outputKey = `${outputFolder}/${fileName}.mp4`
+        else if(options.method == "mp4"){
           ffmpegCommand = CommandBuilder.create(1920,1080).addVideoInput(inputUrl).pad()
           if(options.start && options.end){
             ffmpegCommand = ffmpegCommand.cut(options.start, options.end);
@@ -82,32 +82,17 @@ export const upload = function(bucket, key,folder){
             }
           }
           ffmpegCommand = ffmpegCommand.mp4(outputKey);
+        }else if(options && options.method == "merge"){
+          let keys = options.keys.map((k)=>{
+            return s3Url + "/" + bucket + "/" + k; 
+          })
+          ffmpegCommand = CommandBuilder.create().merge(keys,(concatText)=>{
+            const mergePath = outputFolder + "/merge.txt";
+            fs.writeFileSync(mergePath, concatText);
+            return mergePath;
+          }).mp4(outputKey);
         }
-        // if(options.method == "cut"){
-        //   const url = s3Url + "/" + bucket + "/" + key;
-        //   const outputPath = `${dirname}output/${folder}/${key}`;
-        //   const outputFolder = path.dirname(outputPath) + "/" + path.parse(outputPath).name;
-        //   const fileName = path.parse(outputPath).name;
-        //   const outputFolderAndFilename = `${outputFolder}/${fileName}.mp4`
-        //   fs.mkdirSync(outputFolder, { recursive: true });
-        //   CommandBuilder.a(1920,1080).
-        // }
-        // if(options && options.method == "merge"){
-        //   success = await mergeMp4(bucket,key,folder,options.newKey);
-        // }else if(options && options.method == "cut"){
-        //   success = await cutMp4(bucket,key,folder,options.newKey,options.start, options.end);
-        // }else if(options && options.method == "image"){
-        //   success = await transcodeImageMp4(bucket,key,folder,options.newKey,options.duration);
-        // }else if(options && options.format == "mp4"){
-        //   success = await transcodeMp4(bucket,key,folder,options.start, options.end);
-        // }else{
-        //   success = await transcode(bucket,key,folder);
-        // }
-        console.log("ffmpegCommand",ffmpegCommand?.toString());
-        fs.mkdirSync(path.dirname(outputKey), { recursive: true });
-        
         await ffmpegWoker(ffmpegCommand?.toArray())
-        
         if(success){
           await upload(bucket, key, folder)
         }    
@@ -167,8 +152,17 @@ const progress = async function(processid){
   return { success : false, error : true, progress : 0};
   
 }
+const stats = async function(bucket,key){
+    const inputUrl = s3Url + "/" + bucket + "/" + key;
+    const b = await CommandBuilder.create().addVideoInput(inputUrl).stats();
+    const answer = await b.run();
+    const duration = b.extractStats(""+answer.error);
+    console.log("duration,duration",duration);
+    return answer;
+}
 
 export default {
  add,
- progress
+ progress,
+ stats
 } 
