@@ -10,13 +10,14 @@ import fs from 'fs';
 import { dirname } from '../../dirname.js';
 import { queue, dones, errors } from '../config/database.js';
 import CommandBuilder from './ffmpeg-command-builder-node.js';
+
 const s3Url = process.env.S3_URL || "https://s3-eu-central-1.ionoscloud.com";
 import path from 'path';
 
 import {testHardwareAcceleration } from './ffmpeg-hwaccel.js';
-// testHardwareAcceleration(`${dirname}output`).then((a)=>{
-// console.log("a",a);
-// })
+testHardwareAcceleration(`${dirname}output`).then((a)=>{
+  CommandBuilder.setVideocodex(a[0])
+})
 //const testcommand = CommandBuilder.a(1920,1080).addVideoInput("./output/1.mp4").addOverlay("./output/1.png").addOverlay("./output/1.png","topright", 20).reencodeVideo().mp4("./output/2.mp4").logCommand().z();
 
 export const upload = function(bucket, key,folder){
@@ -79,7 +80,19 @@ export const upload = function(bucket, key,folder){
           if(options.overlays){
             console.log("overlays",options.overlays);
             for (const overlay of options.overlays) {
-              const overlayUrl = s3Url + "/" + bucket + "/" + overlay.key;
+              let overlayUrl;
+              if(overlay.key.startsWith("http")){
+                overlayUrl = overlay.key;
+              }else if(overlay.key.startsWith("data")){
+                const data = overlay.key.split(';base64,').pop();
+                const extension = overlay.key.substring("data:image/".length, overlay.key.indexOf(";base64"));
+                const filePath = outputFolder + "/" + overlay.position + "." + extension;
+                fs.writeFileSync(filePath, data,{encoding: 'base64'});
+                overlayUrl = filePath;
+              }else{
+                overlayUrl = s3Url + "/" + bucket + "/" + overlay.key;
+              }
+              
               ffmpegCommand = ffmpegCommand.addOverlay(overlayUrl, overlay.position, overlay.size);  
             }
           }else{

@@ -1,3 +1,4 @@
+let videocodex;
 export default class CommandBuilder{
     command = [];
     filterComplex1 = "";
@@ -5,9 +6,13 @@ export default class CommandBuilder{
     overlayInputIndex = 0;
     width;
     height;
-    static create(width, height, hwaccel){
+    static create(width, height){
         console.log("this.width",width);
         return new this(width, height);
+    }
+    static setVideocodex(v){
+        console.log("setVideoindex",v);
+        videocodex = ["-c:v",v,`-profile:v`, 'main','-sc_threshold', '0', '-g', '48']
     }
     constructor(width, height){
         //super(...arguments);
@@ -69,14 +74,14 @@ export default class CommandBuilder{
         if(position.indexOf("left") > -1){
             positionString += "0:";
         }else if(position.indexOf("center") > -1){
-            positionString += "w/2";
+            positionString += "(W-w)/2:";
         }else{
             positionString += "W-w:";
         }
         if(position.indexOf("top") > -1){
             positionString += "0";
         }else if(position.indexOf("middle") > -1){
-            positionString += "h/2";
+            positionString += "(H-h)/2";
         }else{
             positionString += "H-h";
         }
@@ -111,7 +116,7 @@ export default class CommandBuilder{
             this.add(['-filter_complex',`${this.filterComplex1}${this.filterComplex2}`,`-map`,`[videoinput${this.overlayInputIndex+1}]`])
         }
         if(videocodex){
-
+            this.add(videocodex);
         }else{
             this.add(['-c:v', 'h264', `-profile:v`, 'main', '-crf', '20', '-sc_threshold', '0', '-g', '48']);
         }
