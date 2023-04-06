@@ -114,7 +114,7 @@ export const upload = function(bucket, key,folder){
         //await ffmpegWoker(ffmpegCommand?.toArray())
         await upload(bucket, key, folder)
         
-        dones.push("/"+folder,{ bucket,key, folder, newKey : fileNameWithExtension });
+        dones.push("/"+folder,{ bucket,key, folder, newKey : "/" + fileNameWithExtension });
     } catch (error) {
       errors.push("/"+folder,{ bucket,key, folder });  
     }finally{
