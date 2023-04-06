@@ -64,7 +64,9 @@ export const upload = function(bucket, key,folder){
        let ffmpegCommand;
        const outputFolder = `${dirname}output/${folder}`;
        const fileName = `${options.newKey}`;
-       const outputKey = `${outputFolder}/${fileName}.mp4`
+       const fileNameWithExtension = `${fileName}.mp4`;
+       const outputKey = `${outputFolder}/${fileName}.mp4`;
+       const newKey = s3Url + "/" + bucket + "/" + fileNameWithExtension;
        fs.mkdirSync(path.dirname(outputKey), { recursive: true });
        const inputUrl = s3Url + "/" + bucket + "/" + key;
         console.log("format",options);
@@ -111,10 +113,9 @@ export const upload = function(bucket, key,folder){
         }
         await ffmpegCommand.run();
         //await ffmpegWoker(ffmpegCommand?.toArray())
-        if(success){
-          await upload(bucket, key, folder)
-        }    
-        dones.push("/"+folder,{ bucket,key, folder, newKey : outputKey });
+        await upload(bucket, key, folder)
+        
+        dones.push("/"+folder,{ bucket,key, folder, newKey });
     } catch (error) {
       errors.push("/"+folder,{ bucket,key, folder });  
     }finally{

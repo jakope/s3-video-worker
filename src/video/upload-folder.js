@@ -5,7 +5,7 @@ import {parentPort, workerData} from "worker_threads";
 import { createReadStream, promises } from 'fs';
 import { resolve, join } from 'path';
 import uploadObject from './upload-object.js';
-const {bucket, key, folder } = workerData;
+const {bucket, folder } = workerData;
 const { readdir, stat: getStats } = promises;
 
 import { dirname } from '../../dirname.js';
@@ -15,8 +15,6 @@ const uploadFile = async function uploadFile({ path, params, options } = {}) {
   const parameters = { ...params };
   console.log(parameters);
   const opts = { ...options };
-  
-  console.log("upload",bucket,key,path);
   await uploadObject(parameters.Key, path);
   return true;
 };
